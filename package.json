@@ -1,0 +1,30 @@
+{
+  "name": "abitragebot2.0",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "hardhat": "^2.12.6"
+  },
+  "dependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.1",
+    "@openzeppelin/contracts": "^4.8.1",
+    "@uniswap/v2-core": "^1.0.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "big.js": "^6.2.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "ethers": "^5.7.2",
+    "express": "^4.18.2",
+    "http": "^0.0.1-security",
+    "i": "^0.3.7",
+    "npm": "^9.3.1",
+    "path": "^0.12.7",
+    "require": "^2.4.20"
+  }
+}
