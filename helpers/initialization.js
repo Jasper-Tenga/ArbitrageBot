@@ -12,7 +12,7 @@ if(config.PROJECT_SETTINGS.isLocal) {
     //provider = new hre.ethers.providers.WebSocketProvider("ws://127.0.0.1:8545/");
     provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
 } else {
-    provider = new hre.ethers.providers.WebSocketProvider(`wss://mainnet.infura.io/ws/v3/${process.env.INFURA_API_KEY}`);
+    provider = new ethers.providers.JsonRpcProvider(`https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`);
 }
 
 const uFactory = new ethers.Contract(config.UNISWAP.FACTORY_ADDRESS, IUniswapV2Factory.abi, provider);

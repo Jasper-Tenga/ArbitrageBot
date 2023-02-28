@@ -8,7 +8,7 @@ const { getTokenAndContract, getPairContract, getReserves, calculatePrice, simul
 const { provider, uFactory, uRouter, sFactory, sRouter, arbitrage } = require('./helpers/initialization')
 
 const arbFor = process.env.ARB_FOR; //WETH
-const arbAgainst = process.env.ARB_AGAINST; //SHIB
+const arbAgainst = process.env.ARB_AGAINST; //UNI
 const units = process.env.UNITS;
 const difference = process.env.PRICE_DIFFERENCE;
 const gasLimit = process.env.GAS_LIMIT;
@@ -99,7 +99,7 @@ const checkPrice = async (exchange, token0, token1) => {
     const uFPrice = Number(uPrice).toFixed(units);
     const sFPrice = Number(sPrice).toFixed(units);
 
-    const priceDifference = calculateDifference(uFPrice, sFPrice);
+    const priceDifference = await calculateDifference(uFPrice, sFPrice);
 
     console.log(`Current Block: ${currentBlock}`);
     console.log('------------------------------------');
@@ -148,20 +148,20 @@ const determineProfitability = async(_routerPath, _token0Contract, _token0, _tok
     }
 
     console.log(`Reserves on ${_routerPath[1].address}`);
-    console.log(`SHIB: ${Number(ethers.utils.formatUnits(reserves[0].toString(), 'ether')).toFixed(0)}`);
-    console.log(`WETH: ${ethers.utils.formatUnits(reserves[1].toString(), 'ether')}\n`);
+    console.log(`WETH: ${Number(ethers.utils.formatUnits(reserves[0].toString(), 'ether')).toFixed(0)}`);
+    console.log(`UNI: ${ethers.utils.formatUnits(reserves[1].toString(), 'ether')}\n`);
 
     try{
         //returns amount of WETH needed
         let result = await _routerPath[0].getAmountsIn(reserves[0], [_token0.address, _token1.address]);
     
         const token0In = result[0]; // WETH
-        const token1In = result[1]; // SHIB
+        const token1In = result[1]; // UNI
     
         result = await _routerPath[1].getAmountsOut(token1In, [_token1.address, _token0.address]);
     
-        console.log(`Estimated amount of WETH needed to buy enough SHIB on ${exchangeToBuy}\t\t| ${ethers.utils.formatUnits(token0In, 'ether')}`);
-        console.log(`Estimated amount of WETH returned after swapping SHIB on ${exchangeToSell}\t\t| ${ethers.utils.formatUnits(result[1], 'ether')}`);
+        console.log(`Estimated amount of WETH needed to buy enough UNI on ${exchangeToBuy}\t\t| ${ethers.utils.formatUnits(token0In, 'ether')}`);
+        console.log(`Estimated amount of WETH returned after swapping UNI on ${exchangeToSell}\t\t| ${ethers.utils.formatUnits(result[1], 'ether')}`);
     
         const { amountIn, amountOut } = await simulate(token0In, _routerPath, _token0, _token1);
         const amountDifference = amountOut - amountIn;
