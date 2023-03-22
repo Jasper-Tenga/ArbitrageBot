@@ -1,3 +1,4 @@
+const hre = require("hardhat");
 require("dotenv").config();
 const ethers = require("ethers");
 
@@ -9,14 +10,14 @@ const IArbitrage = require('../artifacts/contracts/Arbitrage.sol/Arbitrage.json'
 let provider;
 
 if(config.PROJECT_SETTINGS.isLocal) {
-    //provider = new hre.ethers.providers.WebSocketProvider("ws://127.0.0.1:8545/");
-    provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
+    provider = new hre.ethers.providers.WebSocketProvider("ws://127.0.0.1:8545/");
+    //provider = new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545");
 } else {
-    provider = new ethers.providers.JsonRpcProvider(`https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`);
+    provider = new ethers.providers.JsonRpcProvider(`https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`);
 }
 
-const uFactory = new ethers.Contract(config.UNISWAP.FACTORY_ADDRESS, IUniswapV2Factory.abi, provider);
-const uRouter = new ethers.Contract(config.UNISWAP.V2_ROUTER_02_ADDRESS, IUniswapV2Router02.abi, provider);
+const qFactory = new ethers.Contract(config.QUICKSWAP.FACTORY_ADDRESS, IUniswapV2Factory.abi, provider);
+const qRouter = new ethers.Contract(config.QUICKSWAP.V2_ROUTER_02_ADDRESS, IUniswapV2Router02.abi, provider);
 const sFactory = new ethers.Contract(config.SUSHISWAP.FACTORY_ADDRESS, IUniswapV2Factory.abi, provider);
 const sRouter = new ethers.Contract(config.SUSHISWAP.V2_ROUTER_02_ADDRESS, IUniswapV2Router02.abi, provider);
 
@@ -24,8 +25,8 @@ const arbitrage = new ethers.Contract(config.PROJECT_SETTINGS.ARBITRAGE_ADDRESS,
 
 module.exports = {
     provider,
-    uFactory,
-    uRouter,
+    qFactory,
+    qRouter,
     sFactory,
     sRouter,
     arbitrage

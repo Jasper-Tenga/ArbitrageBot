@@ -1,10 +1,10 @@
-//const hre = require("hardhat");
+const hre = require("hardhat");
 const ethers = require("ethers");
 require("dotenv").config();
 const contractExtras = require("../artifacts/contracts/Arbitrage.sol/Arbitrage.json");
 const config = require("../config.json");
 const {provider, a, b, c, d, e} = require('../helpers/initialization');
-
+/*
 const abi = contractExtras.abi;
 const byteCode = contractExtras.bytecode;
 
@@ -33,3 +33,23 @@ main().catch((error) => {
     console.error(error);
     process.exitCode = 1;
 });
+*/
+
+async function main() {
+  const Arbitrage = await hre.ethers.getContractFactory("Arbitrage")
+  const arbitrage = await Arbitrage.deploy(
+    config.SUSHISWAP.V2_ROUTER_02_ADDRESS,
+    config.QUICKSWAP.V2_ROUTER_02_ADDRESS,
+    process.env.LENDING_POOL_ADDRESS_PROVIDER
+  )
+
+  await arbitrage.deployed()
+
+  console.log(`Arbitrage contract deployed to ${arbitrage.address}`)
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});
+

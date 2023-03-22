@@ -8,7 +8,7 @@ module.exports = {
   networks: {
     hardhat: {
       forking: {
-        url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`
+        url: `https://polygon-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`
       }
     }
   }

@@ -5,31 +5,31 @@ const ethers = require("ethers")
 const config = require('./config.json')
 const { calculateDifference } = require('./helpers/helpers')
 const { getTokenAndContract, getPairContract, getReserves, calculatePrice, simulate } = require('./helpers/helpers')
-const { provider, uFactory, uRouter, sFactory, sRouter, arbitrage } = require('./helpers/initialization')
+const { provider, qFactory, qRouter, sFactory, sRouter, arbitrage } = require('./helpers/initialization')
 
 const arbFor = process.env.ARB_FOR; //WETH
-const arbAgainst = process.env.ARB_AGAINST; //UNI
+const arbAgainst = process.env.ARB_AGAINST; //USDC
 const units = process.env.UNITS;
 const difference = process.env.PRICE_DIFFERENCE;
 const gasLimit = process.env.GAS_LIMIT;
 const gasPrice = process.env.GAS_PRICE;
 
-let uPair, sPair, amount;
+let qPair, sPair, amount;
 let isExecuting = false;
 
 const main = async () => {
     const { token0Contract, token1Contract, token0, token1 } = await getTokenAndContract(arbFor, arbAgainst, provider);
-    uPair = await getPairContract(uFactory, token0.address, token1.address, provider);
+    qPair = await getPairContract(qFactory, token0.address, token1.address, provider);
     sPair = await getPairContract(sFactory, token0.address, token1.address, provider);
 
-    console.log(`uPair Address: ${uPair.address}`);
+    console.log(`qPair Address: ${qPair.address}`);
     console.log(`sPair Address: ${sPair.address}\n`);
 
-    uPair.on('Swap', async () => {
+    qPair.on('Swap', async () => {
         if(!isExecuting){
             isExecuting = true
             
-            const priceDifference = await checkPrice('Uniswap', token0, token1);
+            const priceDifference = await checkPrice('Quickswap', token0, token1);
             const routerPath = await determineDirection(priceDifference);
 
             if(!routerPath) {
@@ -93,17 +93,17 @@ const checkPrice = async (exchange, token0, token1) => {
 
     const currentBlock = await provider.getBlockNumber();
 
-    const uPrice = await calculatePrice(uPair);
+    const qPrice = await calculatePrice(qPair);
     const sPrice = await calculatePrice(sPair);
 
-    const uFPrice = Number(uPrice).toFixed(units);
+    const qFPrice = Number(qPrice).toFixed(units);
     const sFPrice = Number(sPrice).toFixed(units);
 
-    const priceDifference = await calculateDifference(uFPrice, sFPrice);
+    const priceDifference = await calculateDifference(qFPrice, sFPrice);
 
     console.log(`Current Block: ${currentBlock}`);
     console.log('------------------------------------');
-    console.log(`UNISWAP     | ${token1.symbol}/${token0.symbol}\t | ${uFPrice}`);
+    console.log(`QUICKSWAP     | ${token1.symbol}/${token0.symbol}\t | ${qFPrice}`);
     console.log(`SUSHISWAP   | ${token1.symbol}/${token0.symbol}\t | ${sFPrice}\n`);
     console.log(`Percentage Difference: ${priceDifference}%\n`);
 
@@ -115,17 +115,17 @@ const determineDirection = async (priceDifference) => {
 
     if(priceDifference >= difference){
         console.log(`Potential Arbitrage Direction:\n`);
-        console.log('Buy\t --->\t Uniswap');
+        console.log('Buy\t --->\t Quickswap');
         console.log('Sell\t --->\t Sushiswap\n');
 
-        return [uRouter, sRouter];
+        return [qRouter, sRouter];
 
     } else if (priceDifference <= -(difference)){
         console.log(`Potential Arbitrage Direction:\n`);
         console.log('Buy\t --->\t Sushiswap');
-        console.log('Sell\t --->\t Uniswap\n');
+        console.log('Sell\t --->\t Quickswap\n');
 
-        return [sRouter, uRouter];
+        return [sRouter, qRouter];
 
     } else {
         return null;
@@ -137,14 +137,14 @@ const determineProfitability = async(_routerPath, _token0Contract, _token0, _tok
 
     let reserves, exchangeToBuy, exchangeToSell;
 
-    if(_routerPath[0].address == uRouter.address){
+    if(_routerPath[0].address == qRouter.address){
         reserves = await getReserves(sPair);
-        exchangeToBuy = 'Uniswap';
+        exchangeToBuy = 'Quickswap';
         exchangeToSell = 'Sushiswap';
     } else {
-        reserves = await getReserves(uPair);
+        reserves = await getReserves(qPair);
         exchangeToBuy = 'Sushiswap';
-        exchangeToSell = 'Uniswap';
+        exchangeToSell = 'Quickswap';
     }
 
     console.log(`Reserves on ${_routerPath[1].address}`);
@@ -191,7 +191,9 @@ const determineProfitability = async(_routerPath, _token0Contract, _token0, _tok
         console.table(data);
         console.log();
 
-        if(amountOut < amountIn) {
+        amountWithFee = amountIn + (amountIn * .01);
+
+        if(amountOut < amountWithFee) {
             return false;
         }
 
@@ -209,12 +211,12 @@ const determineProfitability = async(_routerPath, _token0Contract, _token0, _tok
 const executeTrade = async(_routerPath, _token0Contract, _token1Contract) => {
     console.log(`Attempting Arbitrage...\n`);
 
-    let startOnUniswap;
+    let startOnQuickswap;
 
-    if(_routerPath[0].address = uRouter.address){
-        startOnUniswap = true;
+    if(_routerPath[0].address = qRouter.address){
+        startOnQuickswap = true;
     } else {
-        startOnUniswap = false;
+        startOnQuickswap = false;
     }
 
     const account = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
@@ -223,8 +225,9 @@ const executeTrade = async(_routerPath, _token0Contract, _token1Contract) => {
     const ethBalanceBefore = await account.getBalance();
 
     if(config.PROJECT_SETTINGS.isDeployed){
-        const transaction = await arbitrage.connect(account).executeTrade(startOnUniswap, _token0Contract.address, _token1Contract.address, amount);
+        const transaction = await arbitrage.connect(account).executeTrade(startOnQuickswap, _token0Contract.address, _token1Contract.address, amount);
         const receipt = await transaction.wait();
+        console.log(`***PRINTED RECEIPT*** \n ${receipt}`);
     }
 
     console.log(`Trade Complete:\n`);

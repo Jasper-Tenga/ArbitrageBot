@@ -10,14 +10,14 @@ async function getTokenAndContract(_token0Address, _token1Address, _provider){
 
     const token0 = {
         address: _token0Address,
-        decimals: 18,
+        decimals: await token0Contract.decimals(),
         symbol: await token0Contract.symbol(),
         name: await token0Contract.name()
     }
 
     const token1 = {
         address: _token1Address,
-        decimals: 18,
+        decimals: await token1Contract.decimals(),
         symbol: await token1Contract.symbol(),
         name: await token1Contract.name()
     }
@@ -43,11 +43,11 @@ async function getReserves(_pairContract){
 
 async function calculatePrice(_pairConract){
     const [x,y] = await getReserves(_pairConract);
-    return Big(x).div(Big(y));
+    return x/y;
 }
 
-async function calculateDifference(_uPrice, _sPrice){
-    return(((_uPrice - _sPrice) / _sPrice) * 100).toFixed(2);
+async function calculateDifference(_qPrice, _sPrice){
+    return(((_qPrice - _sPrice) / _sPrice) * 100).toFixed(2);
 }
 
 async function simulate(amount, _routerPath, _token0, _token1){

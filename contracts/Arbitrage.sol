@@ -10,7 +10,7 @@ abstract contract FlashLoanReceiverBase is IFlashLoanReceiver{
   ILendingPoolAddressesProvider public immutable override ADDRESSES_PROVIDER;
   ILendingPool public immutable override LENDING_POOL;
 
-  constructor(ILendingPoolAddressesProvider provider) public {
+  constructor(ILendingPoolAddressesProvider provider) {
     ADDRESSES_PROVIDER = provider;
     LENDING_POOL = ILendingPool(provider.getLendingPool());
   }
@@ -18,14 +18,16 @@ abstract contract FlashLoanReceiverBase is IFlashLoanReceiver{
 
 contract Arbitrage is FlashLoanReceiverBase{
     IUniswapV2Router02 public immutable sRouter;
-    IUniswapV2Router02 public immutable uRouter;
+    IUniswapV2Router02 public immutable qRouter;
     ILendingPool public immutable lendingPool;
 
     address public owner;
+    address[] private Assets;
+    uint256[] private Amounts;
 
-    constructor(address _sRouter, address _uRouter, address _providerAddress) FlashLoanReceiverBase(_providerAddress) public{
+    constructor(address _sRouter, address _qRouter, ILendingPoolAddressesProvider _providerAddress) FlashLoanReceiverBase(_providerAddress) public{
         sRouter = IUniswapV2Router02(_sRouter); //Sushiswap
-        uRouter = IUniswapV2Router02(_uRouter); //Uniswap  
+        qRouter = IUniswapV2Router02(_qRouter); //Uniswap  
         lendingPool = ILendingPool(_providerAddress.getLendingPool());
         owner = msg.sender;
     }
@@ -36,7 +38,7 @@ contract Arbitrage is FlashLoanReceiverBase{
     }
 
     function executeTrade(
-        bool _startOnUniswap,
+        bool _startOnQuickswap,
         address _token0,
         address _token1,
         uint256 _flashAmount
@@ -48,10 +50,12 @@ contract Arbitrage is FlashLoanReceiverBase{
 
         address[] memory assets = new address[](2);
         assets[0] = _token0;
-        assets[1] = _token1;
+        Assets[0] = _token0;
+        //assets[1] = _token1;
 
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = _flashAmount;
+        Amounts[0] = _flashAmount;
 
         uint256[] memory modes = new uint256[](1);
         modes[0] = 0;
@@ -60,7 +64,7 @@ contract Arbitrage is FlashLoanReceiverBase{
         uint16 referralCode = 0;
 
         bytes memory data = abi.encode(
-            _startOnUniswap,
+            _startOnQuickswap,
             _token0,
             _token1,
             _flashAmount,
@@ -69,9 +73,9 @@ contract Arbitrage is FlashLoanReceiverBase{
 
         lendingPool.flashLoan(
             receiverAddress,
-            assets[0],
-            amounts[0],
-            modes[0],
+            assets,
+            amounts,
+            modes,
             onBehalfOf,
             data,
             referralCode
@@ -89,7 +93,7 @@ contract Arbitrage is FlashLoanReceiverBase{
         returns (bool)
     {
         (
-            bool startOnUniswap,
+            bool startOnQuickswap,
             address token0,
             address token1,
             uint256 flashAmount,
@@ -106,8 +110,8 @@ contract Arbitrage is FlashLoanReceiverBase{
         path[0] = token0;
         path[1] = token1;
 
-        if (startOnUniswap) {
-            _swapOnUniswap(path, flashAmount, 0);
+        if (startOnQuickswap) {
+            _swapOnQuickswap(path, flashAmount, 0);
 
             path[0] = token1;
             path[1] = token0;
@@ -115,7 +119,7 @@ contract Arbitrage is FlashLoanReceiverBase{
             _swapOnSushiswap(
                 path,
                 IERC20(token1).balanceOf(address(this)),
-                (flashAmount.add(premiums[0]))
+                (flashAmount + premiums[0])
             );
         } else {
             _swapOnSushiswap(path, flashAmount, 0);
@@ -123,16 +127,16 @@ contract Arbitrage is FlashLoanReceiverBase{
             path[0] = token1;
             path[1] = token0;
 
-            _swapOnUniswap(
+            _swapOnQuickswap(
                 path,
                 IERC20(token1).balanceOf(address(this)),
-                (flashAmount.add(premiums[0]))
+                (flashAmount + premiums[0])
             );
         }
 
-        for (uint i = 0; i < assets.length; i++) {
-            uint amountOwing = amounts[i].add(premiums[i]);
-            IERC20(assets[i]).approve(address(LENDING_POOL), amountOwing);
+        for (uint i = 0; i < 1; i++) {
+            uint256 amountOwing = Amounts[i] + premiums[i];
+            IERC20(Assets[i]).approve(address(LENDING_POOL), amountOwing);
         }
 
         IERC20(token0).transfer(
@@ -144,17 +148,17 @@ contract Arbitrage is FlashLoanReceiverBase{
 
     // -- INTERNAL FUNCTIONS -- //
 
-    function _swapOnUniswap(
+    function _swapOnQuickswap(
         address[] memory _path,
         uint256 _amountIn,
         uint256 _amountOut
     ) internal {
         require(
-            IERC20(_path[0]).approve(address(uRouter), _amountIn),
-            "Uniswap approval failed."
+            IERC20(_path[0]).approve(address(qRouter), _amountIn),
+            "Quickswap approval failed."
         );
 
-        uRouter.swapExactTokensForTokens(
+        qRouter.swapExactTokensForTokens(
             _amountIn,
             _amountOut,
             _path,
